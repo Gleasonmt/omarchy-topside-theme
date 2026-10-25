@@ -48,3 +48,7 @@ for frame rates and battery settings.
 
 Original artwork. The look is inspired by films and games; no logos or characters
 are used.
+
+## License
+
+[MIT](LICENSE)
