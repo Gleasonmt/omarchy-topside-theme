@@ -2,9 +2,21 @@
 
 An animated theme for [Omarchy](https://omarchy.org). A giant walker paces past a ruined city in the dust, its searchlight sweeping, while a raider watches from a dune.
 
+> **Animated with [omarchy-live-wallpaper](https://github.com/Gleasonmt/omarchy-live-wallpaper).**
+> Install that plugin too (below) to make the wallpaper move and to get the
+> **Topside Lite** version. Without it the theme still works, with a still wallpaper.
+
 ![Topside](preview.jpg)
 
 ## Install
+
+Theme and plugin together:
+
+```bash
+omarchy theme install https://github.com/Gleasonmt/omarchy-topside-theme && omarchy plugin add https://github.com/Gleasonmt/omarchy-live-wallpaper --enable --yes
+```
+
+or one at a time:
 
 ```bash
 omarchy theme install https://github.com/Gleasonmt/omarchy-topside-theme
