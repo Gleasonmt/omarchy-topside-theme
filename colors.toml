@@ -1,0 +1,32 @@
+# Topside: warm charcoal and sand, rust and faded teal, signal yellow and red.
+mode = "dark"
+
+accent = "#f2c14e"
+selection = "#3a3128"
+muted = "#5a4d40"
+
+background = "#1b1714"
+dark_background = "#15120f"
+darker_background = "#0f0d0b"
+lighter_background = "#26201b"
+
+foreground = "#e6dccb"
+dark_foreground = "#8c7f6c"
+light_foreground = "#f1e8d8"
+bright_foreground = "#fbf4e6"
+
+red = "#e5484d"
+yellow = "#f2c14e"
+orange = "#e8873a"
+green = "#9bb36b"
+cyan = "#5fa8a0"
+blue = "#6f93b5"
+magenta = "#c27c92"
+brown = "#8a5a3b"
+
+bright_red = "#ff6b6f"
+bright_yellow = "#ffd77a"
+bright_green = "#b7cf86"
+bright_cyan = "#83c4bc"
+bright_blue = "#93b2cf"
+bright_magenta = "#d99bae"
