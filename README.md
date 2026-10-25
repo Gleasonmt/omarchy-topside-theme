@@ -49,6 +49,20 @@ for frame rates and battery settings.
 Original artwork. The look is inspired by films and games; no logos or characters
 are used.
 
+## Making changes
+
+The scene is \`src/<name>.frag\` (with \`src/common.glsl\`): edit it, then run
+
+\`\`\`bash
+tools/build.sh           # rebuilds live/, the still in backgrounds/ and preview.jpg
+tools/build.sh --media   # also the animated previews in media/ (a few minutes)
+\`\`\`
+
+and commit the results. Needs \`qt6-shadertools\`, \`qt6-declarative\`, ImageMagick and
+(for \`--media\`) ffmpeg. To try a change on your own desktop, run
+\`omarchy theme update\` after pushing, or copy the built files into
+\`~/.config/omarchy/themes/<name>/\`.
+
 ## License
 
 [MIT](LICENSE)
