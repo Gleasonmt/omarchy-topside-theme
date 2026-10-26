@@ -1,10 +1,10 @@
 // Topside: a ruined city under a dusty sky. A giant four-legged machine paces
 // along the horizon, its red eye pulsing and a searchlight sweeping through
-// the dust; a raider with a pack sits on a dune, cloth snapping in the wind.
+// the dust; a scout with a pack sits on a dune, cloth snapping in the wind.
 // Drawn as layered silhouettes with aerial perspective.
 // still: 64
 // detail: -.74 -.33 -.28 .2    the walker's eye and searchlight
-// detail: -1.2 -.44 1.2 -.08   both dune crests end to end: blowing sand, and the raider's scarf and whip
+// detail: -1.2 -.44 1.2 -.08   both dune crests end to end: blowing sand, and the scout's scarf and whip
 
 const vec3 SUN_COL = vec3(1., .62, .3);
 const vec3 SIGNAL = vec3(.95, .55, .07);   // #f2c14e, linear
@@ -27,17 +27,20 @@ vec3 skyCol(vec2 p) {
   // sun: a soft disc in the haze, with a wide glow
   float d = length(p - SUN);
   col += SUN_COL * (smoothstep(.052, .045, d) * 2.2 + exp(-d * 9.) * .7 + exp(-d * 2.5) * .25);
-  // dust clouds, slowly drifting
-  vec2 q = p * vec2(1.6, 5.) + vec2(ST * .006, 0.);
-  float c = fbm(q + fbm(q * 1.7 + ST * .01) * .8);
+  // dust clouds, slowly drifting (only worked out inside their band)
   float band = smoothstep(.0, .1, h) * smoothstep(.55, .15, h);
-  col = mix(col, mix(srgb(vec3(.45, .22, .12)), SUN_COL * 1.2, exp(-d * 4.)), smoothstep(.45, .85, c) * band * .7);
+  if (band > 0.) {
+    vec2 q = p * vec2(1.6, 5.) + vec2(ST * .006, 0.);
+    float c = fbm(q + fbm(q * 1.7 + ST * .01) * .8);
+    col = mix(col, mix(srgb(vec3(.45, .22, .12)), SUN_COL * 1.2, exp(-d * 4.)), smoothstep(.45, .85, c) * band * .7);
+  }
   return col;
 }
 
 // Light shafts from the sun, broken up by the clouds (cheap: noise by angle).
 float shafts(vec2 p) {
   vec2 v = p - SUN;
+  if (v.y >= .15) return 0.;   // they only fall below the sun
   float ang = atan(v.y, v.x);
   float n = fbm(vec2(ang * 9., ST * .03)) * fbm(vec2(ang * 23. + 4., -ST * .02));
   return n * exp(-length(v) * 2.2) * smoothstep(.0, .1, -v.y + .15);
@@ -98,6 +101,9 @@ float walker(vec2 p, vec2 at, float s, out float eye, out vec2 eyePos) {
   d = min(d, sdSeg(q, hull + vec2(.15, -.01), head) - .025);               // neck
   eyePos = at + (head + vec2(.055, -.005)) * s;
   eye = length(q - head - vec2(.055, -.005)) * s;
+  // the body and legs fit in |x| < .6, -.03 < y < .9 (bob and lifted feet
+  // included); well outside that it's nowhere near a pixel's width
+  if (abs(q.x) > .7 || q.y < -.12 || q.y > 1.) return s;
   for (int i = 0; i < 4; i++) {
     float fi = float(i);
     float side = i < 2 ? -1. : 1.;
@@ -115,9 +121,12 @@ float walker(vec2 p, vec2 at, float s, out float eye, out vec2 eyePos) {
   return d * s;
 }
 
-// ---- the raider, sitting, side-on, facing left towards the machine ----
-float raider(vec2 p, vec2 at, float s, out float cloth) {
+// ---- the scout, sitting, side-on, facing left towards the machine ----
+float scout(vec2 p, vec2 at, float s, out float cloth) {
   vec2 q = (p - at) / s;
+  // the figure, whip and scarf (at its wildest) fit in |x| < .4, -.17 < y < .9
+  cloth = s;
+  if (abs(q.x) > .5 || q.y < -.3 || q.y > 1.) return s;
   float d = sdSeg(q, vec2(0, .07), vec2(-.05, .4)) - .085;                // torso, leaning forward
   d = smin(d, length(q - vec2(-.08, .55)) - .065, .03);                    // hooded head
   d = min(d, sdSeg(q, vec2(-.11, .6), vec2(-.15, .58)) - .02);             // hood peak
@@ -146,8 +155,14 @@ float raider(vec2 p, vec2 at, float s, out float cloth) {
 
 void main() {
   vec2 p = sceneP();
-  vec3 col = skyCol(p);
   vec3 hazeNear = srgb(vec3(.93, .62, .36));
+  float d1 = dune(p.x + 1.3, HORIZON - .11, .07, 2.);
+  float d2 = dune(p.x, -.31, .1, 0.);
+  // Where either dune is solid, nothing behind it shows: skip the sky, ruins
+  // and walker there (most of the bottom of the screen).
+  vec3 col = vec3(0.);
+  if (fill(p.y - d1) < 1. && fill(p.y - d2) < 1.) {
+  col = skyCol(p);
 
   // far ruins, faint in the haze
   float win;
@@ -171,8 +186,11 @@ void main() {
   vec2 v = p - eyePos;
   float a = atan(v.y, v.x);
   float cone = smoothstep(.06, .0, abs(a - sweep)) * smoothstep(.0, .05, length(v)) * exp(-length(v) * 3.);
-  float dust = .55 + .45 * fbm(p * 14. + vec2(time * .15, 0.));
-  col += srgb(vec3(1., .5, .4)) * cone * dust * .55 * (1. - far * .5);
+  float dust = 0.;
+  if (cone > 0.) {   // the dust it lights only matters inside the beam
+    dust = .55 + .45 * fbm(p * 14. + vec2(time * .15, 0.));
+    col += srgb(vec3(1., .5, .4)) * cone * dust * .55 * (1. - far * .5);
+  }
 
   // nearer ruins, darker
   float mid = ruins(p + vec2(ST * .002, 0) + vec2(3.7, 0), .09, 7., .02, .15, win);
@@ -183,36 +201,41 @@ void main() {
 
   // sun shafts over everything in the distance
   col += SUN_COL * shafts(p) * .22;
+  }
 
-  // dunes: a middle ridge and the near one the raider sits on
-  float d1 = dune(p.x + 1.3, HORIZON - .11, .07, 2.);
+  // dunes: a middle ridge and the near one the scout sits on
   col = mix(col, mix(srgb(vec3(.4, .22, .13)), srgb(vec3(.3, .16, .1)), smoothstep(0., -.1, p.y - d1)), fill(p.y - d1));
-  float d2 = dune(p.x, -.31, .1, 0.);
   float onNear = fill(p.y - d2);
   // sand texture with ripples, lit along the crest from the sun side
-  float rip = .5 + .5 * sin((p.x * 90. + p.y * 260.) + fbm(p * 30.) * 6.);
-  vec3 sand = mix(srgb(vec3(.15, .08, .05)), srgb(vec3(.24, .13, .08)), rip * .5 + fbm(p * 8.) * .5);
-  float crest = exp(-max(d2 - p.y, 0.) * 70.);
-  sand += SUN_COL * crest * .35 * smoothstep(-.4, .5, p.x);
-  col = mix(col, sand, onNear);
+  if (onNear > 0.) {
+    float rip = .5 + .5 * sin((p.x * 90. + p.y * 260.) + fbm(p * 30.) * 6.);
+    vec3 sand = mix(srgb(vec3(.15, .08, .05)), srgb(vec3(.24, .13, .08)), rip * .5 + fbm(p * 8.) * .5);
+    float crest = exp(-max(d2 - p.y, 0.) * 70.);
+    sand += SUN_COL * crest * .35 * smoothstep(-.4, .5, p.x);
+    col = mix(col, sand, onNear);
+  }
   // sand blowing off the crests
   for (int k = 0; k < 2; k++) {
     float base = k == 0 ? d1 : d2;
     float above = p.y - base;
+    // only just above the crest: by .3 up the glow is down to e^-18
+    if (above < 0. || above > .3) continue;
     float streak = fbm(vec2((p.x - time * (.07 + .05 * float(k))) * 9., above * 70.));
     col += srgb(vec3(1., .72, .45)) * smoothstep(.5, .85, streak) * exp(-max(above, 0.) * 60.) * step(0., above) * (.06 + .16 * float(k));
   }
 
-  // the raider on the near dune, facing the machine
+  // the scout on the near dune, facing the machine
   float rx = .42;
   float cloth;
-  float rd = raider(p, vec2(rx, dune(rx, -.31, .1, 0.) - .008), .26, cloth);
+  float rd = scout(p, vec2(rx, dune(rx, -.31, .1, 0.) - .008), .26, cloth);
   vec3 figure = srgb(vec3(.05, .03, .025));
   col = mix(col, figure, fill(rd));
   // rim light on the edge facing the sun (right)
-  float tmp;
-  float inner = raider(p + vec2(.0018, -.0008), vec2(rx, dune(rx, -.31, .1, 0.) - .008), .26, tmp);
-  col += SUN_COL * fill(rd) * (1. - fill(inner)) * .45;
+  if (fill(rd) > 0.) {   // (only on the figure itself)
+    float tmp;
+    float inner = scout(p + vec2(.0018, -.0008), vec2(rx, dune(rx, -.31, .1, 0.) - .008), .26, tmp);
+    col += SUN_COL * fill(rd) * (1. - fill(inner)) * .45;
+  }
   col = mix(col, srgb(vec3(.55, .2, .08)) * .5, fill(cloth) * .6);   // the scarf: faded rust
 
   // dust motes drifting past in the foreground
